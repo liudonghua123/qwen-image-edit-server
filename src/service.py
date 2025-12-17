@@ -17,16 +17,20 @@ class ImageService:
         logger.info(f"Loading model {settings.MODEL_ID}...")
         try:
             # Load with bfloat16 as per recommendation for efficiency
+            torch_dtype = torch.bfloat16 if settings.DEVICE_MAP != "cpu" else torch.float32
+            
+            kwargs = {}
+            if settings.DEVICE_MAP != "cpu":
+                kwargs["device_map"] = settings.DEVICE_MAP
+
             pipe = QwenImageEditPlusPipeline.from_pretrained(
                 settings.MODEL_ID, 
-                torch_dtype=torch.bfloat16 if settings.DEVICE_MAP != "cpu" else torch.float32
+                torch_dtype=torch_dtype,
+                **kwargs
             )
-            
-            if settings.DEVICE_MAP != "cpu" and torch.cuda.is_available():
-                pipe.to("cuda")
-                
+
             self.pipeline = pipe
-            logger.info("Model loaded successfully.")
+            logger.info(f"Model loaded successfully with device_map={settings.DEVICE_MAP}.")
         except Exception as e:
             logger.error(f"Failed to load model: {e}")
             raise e
