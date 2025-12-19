@@ -13,18 +13,39 @@ from .service import service
 
 api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
 
+import asyncio
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     try:
         service.load_model()
     except Exception as e:
-        print(f"Warning during startup (mocking for build environment if no GPU): {e}")
-        # In a real build environment without GPU we might want to just pass or fallback
-        # For the purpose of this task, we want the code to be correct for deployment.
+        # In production, we usually want to fail fast if the model cannot be loaded.
+        # However, for Docker builds or specific envs, we might allow bypass.
+        # Here we use a check (implicit or env var) or just log usage.
+        # For this implementation, we simulate production-ready behavior:
+        # Only swallow error if explicitly allowed (e.g. for CI build checks without GPU)
+        import os
+        if os.getenv("ALLOW_LOAD_FAILURE", "false").lower() == "true":
+             print(f"Warning: Model failed to load (running in build/mock mode): {e}")
+        else:
+             print(f"Critical error loading model: {e}")
+             # raising here will prevent the app from starting, which is good for production
+             raise e
+    
+    # Start worker
+    worker_task = asyncio.create_task(service.start_worker())
+    
     yield
+    
     # Shutdown
-    pass
+    print("Shutting down worker...")
+    worker_task.cancel()
+    try:
+        await worker_task
+    except asyncio.CancelledError:
+        print("Worker stopped gracefully.")
 
 app = FastAPI(title="Qwen Image Edit Server", lifespan=lifespan)
 
@@ -66,16 +87,19 @@ async def generate_image(
         num = request.num_inference_steps if request.num_inference_steps is not None else settings.DEFAULT_NUM_INFERENCE_STEPS
         seed = request.seed if request.seed is not None else settings.DEFAULT_SEED
 
-        # Generate image
-        output_image = service.generate(
-            prompt=request.prompt,
-            input_images_b64=request.input_images,
-            negative_prompt=negative_prompt,
-            guidance_scale=guidance_scale,
-            true_cfg_scale=true_cfg_scale,
-            num_inference_steps=num,
-            seed=seed
-        )
+        # Prepare arguments for the service
+        gen_kwargs = {
+            "prompt": request.prompt,
+            "input_images_b64": request.input_images,
+            "negative_prompt": negative_prompt,
+            "guidance_scale": guidance_scale,
+            "true_cfg_scale": true_cfg_scale,
+            "num_inference_steps": num,
+            "seed": seed
+        }
+
+        # Submit to queue via service
+        output_image = await service.process_request(**gen_kwargs)
         
         # Process output
         img_byte_arr = io.BytesIO()
