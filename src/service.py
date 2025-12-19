@@ -14,7 +14,7 @@ class ImageService:
         self.pipeline = None
         
     def load_model(self):
-        logger.info(f"Loading model {settings.MODEL_ID}...")
+        logger.info(f"Loading model {settings.PRETRAINED_MODEL_NAME}...")
         try:
             # Load with bfloat16 as per recommendation for efficiency
             torch_dtype = torch.bfloat16 if settings.DEVICE_MAP != "cpu" else torch.float32
@@ -24,7 +24,7 @@ class ImageService:
                 kwargs["device_map"] = settings.DEVICE_MAP
 
             pipe = QwenImageEditPlusPipeline.from_pretrained(
-                settings.MODEL_ID, 
+                settings.PRETRAINED_MODEL_NAME, 
                 torch_dtype=torch_dtype,
                 **kwargs
             )

@@ -7,7 +7,9 @@ class Settings(BaseSettings):
     API_KEY: Optional[str] = None
     
     DEVICE_MAP: str = "auto"
-    MODEL_ID: str = "Qwen/Qwen-Image-Edit-2509"
+    DEVICE_MAP: str = "auto"
+    PRETRAINED_MODEL_NAME: str = "Tongyi-MAI/Z-Image-Turbo"
+    MODEL_ID: str = "Qwen/Qwen-Image-Edit-2509" # Used for API response ID
     HF_HOME: Optional[str] = None
     
     # Default Generation Parameters

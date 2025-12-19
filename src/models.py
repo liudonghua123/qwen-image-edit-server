@@ -35,3 +35,13 @@ class ImageResult(BaseModel):
 class ImageGenerationResponse(BaseModel):
     created: int
     data: List[ImageResult]
+
+class ModelCard(BaseModel):
+    id: str
+    object: str = "model"
+    created: int = 1677610602
+    owned_by: str = "custom"
+
+class ModelListResponse(BaseModel):
+    object: str = "list"
+    data: List[ModelCard]

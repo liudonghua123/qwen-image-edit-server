@@ -8,7 +8,7 @@ import uvicorn
 from typing import List
 
 from .config import settings
-from .models import ImageGenerationRequest, ImageGenerationResponse, ImageResult
+from .models import ImageGenerationRequest, ImageGenerationResponse, ImageResult, ModelListResponse, ModelCard
 from .service import service
 
 api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
@@ -104,6 +104,16 @@ async def generate_image(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/v1/models", response_model=ModelListResponse)
+async def list_models(
+    api_key: str = Security(get_api_key)
+):
+    return ModelListResponse(
+        data=[
+            ModelCard(id=settings.MODEL_ID, created=int(time.time()), owned_by="qwen-image")
+        ]
+    )
 
 if __name__ == "__main__":
     uvicorn.run("src.main:app", host=settings.HOST, port=settings.PORT, reload=True)
